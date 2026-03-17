@@ -1,0 +1,78 @@
+from applink import AppInventorLink
+from machine import Pin
+import time
+
+#steppermotorpins
+IN1 = Pin(2, Pin.OUT)
+IN2 = Pin(4, Pin.OUT)
+IN3 = Pin(18, Pin.OUT)
+IN4 = Pin(19, Pin.OUT)
+
+
+stepSequence = [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]
+
+#keep track of what the motor is doing
+# motor_state- "cw", "ccw", or "stop"
+motor_state = "stop"
+# wait_time: How many milliseconds to wait
+wait_time = 10
+
+def steppercontrol(info):
+    global motor_state, wait_time
+    print("got a signall from the app")
+    print(info)
+    
+    #check if the app sent a direction
+    if "dir" in info:
+        motor_state = info.get("dir")
+        
+    #check if the app sent a speed
+    if "speed" in info:
+        val = int(info.get("speed"))
+        #high slider val (100)=small wait (1ms)
+        #low slider val(1)=long wait (20ms)
+        wait_time = 21 - (val // 5) 
+        if wait_time < 2: 
+            wait_time = 2
+
+#wifi setup
+app = AppInventorLink()
+app.start_ap("blehbleh", "12345678")
+
+#turn everything off at the start
+IN1.value(0)
+IN2.value(0)
+IN3.value(0)
+IN4.value(0)
+
+app.on_request(steppercontrol)
+
+#main loop to move motorr
+while (1):
+    app.process() 
+    
+    if motor_state == "cw":
+        #clockwise
+        for step in stepSequence:
+            IN1.value(step[0])
+            IN2.value(step[1])
+            IN3.value(step[2])
+            IN4.value(step[3])
+            time.sleep_ms(wait_time)
+            
+    elif motor_state == "ccw":
+        #counterclockwise
+        for step in reversed(stepSequence):#"reversed" b4 anything just reverses order of sequence
+            IN1.value(step[0])
+            IN2.value(step[1])
+            IN3.value(step[2])
+            IN4.value(step[3])
+            time.sleep_ms(wait_time)
+            
+    else:
+        #if stop,turn everything off
+        IN1.value(0)
+        IN2.value(0)
+        IN3.value(0)
+        IN4.value(0)
+        time.sleep(0.1) 
